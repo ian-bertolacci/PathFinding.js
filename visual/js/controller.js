@@ -18,13 +18,18 @@ var Controller = StateMachine.create({
             to:   'searching'
         },
         {
+          name: 'step',
+          from: ['ready','paused'],
+          to:   'stepping'
+        },
+        {
             name: 'pause',
-            from: 'searching',
+            from: ['searching','stepping'],
             to:   'paused'
         },
         {
             name: 'finish',
-            from: 'searching',
+            from: ['searching','stepping'],
             to:   'finished'
         },
         {
@@ -93,6 +98,7 @@ var Controller = StateMachine.create({
 $.extend(Controller, {
     gridSize: [64, 36], // number of nodes horizontally and vertically
     operationsPerSecond: 300,
+    operations: null,
 
     /**
      * Asynchronous transition from `none` state to `ready` state.
@@ -144,6 +150,27 @@ $.extend(Controller, {
 
         this.loop();
         // => searching
+    },
+    onstep: function(event, from, to) {
+        var grid,
+            timeStart, timeEnd,
+            finder = Panel.getFinder();
+        if( this.path == null || this.path.length == 0 || this.operationCount == 0 ){
+          timeStart = window.performance ? performance.now() : Date.now();
+          grid = this.grid.clone();
+          this.path = finder.findPath(
+              this.startX, this.startY, this.endX, this.endY, grid
+          );
+          this.operationCount = this.operations.length;
+          timeEnd = window.performance ? performance.now() : Date.now();
+          this.timeSpent = (timeEnd - timeStart).toFixed(4);
+        }
+
+        this.dostep();
+        if(!Controller.is('finished')){
+          this.pause();
+        }
+        // => pause, finish
     },
     onrestart: function() {
         // When clearing the colorized nodes, there may be
@@ -213,6 +240,11 @@ $.extend(Controller, {
             enabled: false,
         }, {
             id: 3,
+            text: 'Step Search',
+            enabled: true,
+            callback: $.proxy(this.step, this),
+        }, {
+            id: 4,
             text: 'Clear Walls',
             enabled: true,
             callback: $.proxy(this.reset, this),
@@ -245,6 +277,20 @@ $.extend(Controller, {
         });
         // => [paused, finished]
     },
+    onstepping: function(){
+      console.log('=> stepping');
+      this.setButtonStates({
+          id: 1,
+          text: 'Restart Search',
+          enabled: true,
+          callback: $.proxy(this.restart, this),
+      }, {
+          id: 2,
+          text: 'Pause Search',
+          enabled: true,
+          callback: $.proxy(this.pause, this),
+      });
+    },
     onpaused: function() {
         console.log('=> paused');
         this.setButtonStates({
@@ -272,6 +318,9 @@ $.extend(Controller, {
             text: 'Clear Path',
             enabled: true,
             callback: $.proxy(this.clear, this),
+        }, {
+            id: 3,
+            enabled: false,
         });
     },
     onmodified: function() {
@@ -348,11 +397,11 @@ $.extend(Controller, {
             if (!Controller.is('searching')) {
                 return;
             }
-            Controller.step();
+            Controller.dostep();
             setTimeout(loop, interval);
         })();
     },
-    step: function() {
+    dostep: function() {
         var operations = this.operations,
             op, isSupported;
 
@@ -369,6 +418,7 @@ $.extend(Controller, {
     },
     clearOperations: function() {
         this.operations = [];
+        this.path = []
     },
     clearFootprints: function() {
         View.clearFootprints();
