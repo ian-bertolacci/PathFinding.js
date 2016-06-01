@@ -39,41 +39,40 @@ DepthFirstFinder.prototype.findPath = function(startX, startY, endX, endY, grid)
     var openList = [],
         diagonalMovement = this.diagonalMovement,
         startNode = grid.getNodeAt(startX, startY),
-        endNode = grid.getNodeAt(endX, endY),
-        neighbors, neighbor, node, i, l;
+        endNode = grid.getNodeAt(endX, endY);
 
-    // push the start pos into the stack
-    openList.push(startNode);
     startNode.opened = true;
 
-    // while the queue is not empty
-    while (openList.length) {
-        // take the end node from the queue
-        node = openList.pop();
-        node.closed = true;
+    var search = function(node){
+      node.opened = true;
+      if (node === endNode) {
+        return Util.backtrace(endNode);
+      }
+      node.closed = true;
 
-        // reached the end position
-        if (node === endNode) {
-            return Util.backtrace(endNode);
-        }
+      var neighbors = grid.getNeighbors(node, diagonalMovement);
+      for (var i = 0, l = neighbors.length; i < l;  ++i) {
+          var neighbor = neighbors[i];
+          // skip this neighbor if it has been inspected before
+          if (neighbor.closed || neighbor.opened) {
+              continue;
+          }
 
-        neighbors = grid.getNeighbors(node, diagonalMovement);
-        for (i = 0, l = neighbors.length; i < l; ++i) {
-            neighbor = neighbors[i];
+          neighbor.opened = true;
 
-            // skip this neighbor if it has been inspected before
-            if (neighbor.closed || neighbor.opened) {
-                continue;
-            }
-
-            openList.push(neighbor);
-            neighbor.opened = true;
-            neighbor.parent = node;
-        }
-    }
+          neighbor.parent = node;
+          var rec_call = search(neighbor);
+          if( rec_call != [] ){
+            return rec_call;
+          } else {
+            neighbor.closed = true;
+          }
+      }
+      return [];
+    }.bind(this);
 
     // fail to find the path
-    return [];
+    return search(startNode);
 };
 
 module.exports = DepthFirstFinder;
