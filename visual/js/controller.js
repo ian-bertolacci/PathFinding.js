@@ -213,6 +213,8 @@ $.extend(Controller, {
     },
     onmodify: function(event, from, to) {
         // => modified
+        this.clearOperations();
+        this.clearFootprints();
     },
     onreset: function(event, from, to) {
         setTimeout(function() {
@@ -258,6 +260,9 @@ $.extend(Controller, {
         this.setButtonStates({
             id: 2,
             enabled: true,
+        },{
+            id: 3,
+            enabled: false,
         });
         this.search();
         // => searching
@@ -303,6 +308,9 @@ $.extend(Controller, {
             text: 'Cancel Search',
             enabled: true,
             callback: $.proxy(this.cancel, this),
+        },{
+            id: 3,
+            enabled: true,
         });
         // => [searching, ready]
     },
@@ -535,15 +543,18 @@ $.extend(Controller, {
         this.startX = gridX;
         this.startY = gridY;
         View.setStartPos(gridX, gridY);
+        this.clearFootprints();
     },
     setEndPos: function(gridX, gridY) {
         this.endX = gridX;
         this.endY = gridY;
         View.setEndPos(gridX, gridY);
+        this.clearFootprints();
     },
     setWalkableAt: function(gridX, gridY, walkable) {
         this.grid.setWalkableAt(gridX, gridY, walkable);
         View.setAttributeAt(gridX, gridY, 'walkable', walkable);
+        this.clearFootprints();
     },
     isStartPos: function(gridX, gridY) {
         return gridX === this.startX && gridY === this.startY;
